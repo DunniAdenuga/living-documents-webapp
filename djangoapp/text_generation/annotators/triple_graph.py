@@ -193,7 +193,7 @@ class TripleGraph:
         logger.warning("sentences before connecting")
         logger.warning(self.sentences)
         logger.warning(
-            '{}: Connecting to http://lws-hanrahan.ist.psu.edu:4200'.format(
+            '{}: Connecting to ' + NLP_SERVER_URL + " ".format(
                 datetime.datetime.now()))
         self._nlp_server = StanfordCoreNLP(NLP_SERVER_URL)
         logger.warning("after NLP server is set")

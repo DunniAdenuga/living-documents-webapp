@@ -5,8 +5,8 @@
 require('froala-editor/js/froala_editor.pkgd.min')
 
 // Require Froala Editor css files.
-require('froala-editor/css/froala_editor.pkgd.min.css')
-require('froala-editor/css/froala_style.min.css')
+//require('froala-editor/css/froala_editor.pkgd.min.css')
+//require('froala-editor/css/froala_style.min.css')
 
 import Vue from 'vue'
 import App from './App'
@@ -27,14 +27,14 @@ import {BootstrapVue, BootstrapVueIcons } from 'bootstrap-vue'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 
-import VueFroala from 'vue-froala-wysiwyg'
+//import VueFroala from 'vue-froala-wysiwyg'
 
 Vue.config.productionTip = false
 Vue.use(BootstrapVue)
 Vue.use(BootstrapVueIcons)
 Vue.use(Vmodal)
 Vue.use(VueMaterial)
-Vue.use(VueFroala)
+//Vue.use(VueFroala)
 Vue.use(Vuesax)
 // Vue.use(Vuetify)
 //Vue.component('editor', require('./components/Editor'));

@@ -26,7 +26,9 @@
         <b-col cols="9" v-if="showJumbotron">
           <b-jumbotron class="mt-1 mx-2" lead="Quick Info">
             <li>The Concept Graph represents the document in graphical form and has nodes and links</li>
-            <li>Nodes represent important words that make up the document. Click the node to view how the nodes are represented in the summmary</li>
+            <li>Nodes represent important words that make up the document.</li>
+            <li>Incomplete words in the nodes of the graph are stemmed words e.g. "observ" may represent "observe" or "observation"</li>
+            <li>Click the node to view how the nodes are represented in the summary</li>
             <li>Links(lines between nodes) show how the words/nodes are connected in the document</li>
           </b-jumbotron>
         </b-col>
@@ -34,7 +36,7 @@
 
       <b-row>
         <b-col cols="4">
-          <b-alert v-model="showNodeDismissibleAlert" style="z-index: 1;" :style="{ position: 'absolute', top: mouseY + 'px', left: mouseX + 'px' }"
+          <b-alert v-model="showNodeDismissibleAlert" style="z-index: 1;" :style="{ position: 'relative', top: mouseY + 'px', left: mouseX + 'px' }"
                    variant="info" dismissible>
             <h5 style="text-decoration: underline;">Represented Words</h5>
             <p>{{"\n"}}</p>
@@ -43,7 +45,7 @@
 <!--          <b-jumbotron v-show="showNodeDismissibleAlert" :style="{ position: 'absolute',-->
 <!--        width: '100px', height: '100px', top: mouseY + 'px', left: mouseX + 'px' }">-->
 <!--            <u><h6>Represented Words</h6></u>-->
-<!--            <p>{{ alertedNodeInformation }}</p>-->
+<!--            <p>{{ alertedNodeInformation ... testing }}</p>-->
 <!--          </b-jumbotron>-->
         </b-col>
       </b-row>
@@ -154,11 +156,12 @@
             this.base_url = urlConfig.base_url;
 
             let url = this.base_url + `${this.document_id}/get_tree/`;
+            console.log("about to call axios")
             axios.get(url).then((response) => {
               console.log("response.data")
               console.log(response.data)
-              console.log("response.data.graph_str")
-              console.log(response.data.graph_string_version)
+              // console.log("response.data.graph_str")
+              // console.log(response.data.graph_string_version)
               this.treeData.children = response.data.doc_graph
               this.backendTreeDataArray = response.data.doc_graph
               this.createNodes(this.backendTreeDataArray)
@@ -169,7 +172,10 @@
               console.log("Created Links")
               console.log(this.links)
               this.showTree = true
-            })
+            }).catch((error) => {
+              console.log("in getTreeTree method");
+              console.log(error);
+            });
           },
 
           createNodes: function(doc_graph){
@@ -186,7 +192,7 @@
 
               let wordsArray = eachNode.name.split("\n")
               let newNode = {};
-              if(this.stopwords.includes(wordsArray[0])){
+              if((this.stopwords.includes(wordsArray[0])) || (this.stopwords.includes(wordsArray[1].split(": ")[1]))){
                 let root_name = "CONNECTOR--" + this.num_roots;
                 newNode = {id: this.idNodeHelper, name: root_name};
                 this.num_roots++;
@@ -239,7 +245,8 @@
           // },
 
           showNodeDetails: function(event, node_object){
-              if(this.showNodeDismissibleAlert && (this.currentPressedNode.id == node_object.id)){
+              if((this.showNodeDismissibleAlert && (this.currentPressedNode.id == node_object.id))
+                  || (node_object.name.includes("CONNECTOR--"))){
                 this.showNodeDismissibleAlert = false
               }else{
                 this.mouseX = event.screenX;

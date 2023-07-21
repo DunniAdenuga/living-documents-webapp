@@ -14,7 +14,8 @@ import os
 import sys
 
 # Stanford Core NLP server
-NLP_SERVER_URL = 'http://lws-hanrahan.ist.psu.edu:4200/'
+NLP_SERVER_URL = 'http://130.203.136.198:9000/'
+# NLP_SERVER_URL = 'http://lws-hanrahan.ist.psu.edu:4200/'
 # NLP_SERVER_URL = 'http://living-documents.ist.psu.edu:4200/'
 # NLP_SERVER_URL = 'http://130.203.136.198:4200'
 # NLP_SERVER_URL = 'http://0.0.0.0:4200'

@@ -17,3 +17,8 @@ class Article(models.Model):
         on_delete=models.CASCADE)
 
     url = models.URLField(blank=True, null=True, max_length=1000)
+
+    def __str__(self):
+        """String for representing the Model object."""
+        info = "%d: %s" % (self.id, self.url)
+        return info

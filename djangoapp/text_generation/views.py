@@ -68,7 +68,10 @@ class TripleGraphViewSet(viewsets.ModelViewSet):
                 i = i + 1
 
             logger.warning("Graph Array: " + str(graph_arr))
-            return JsonResponse({'doc_graph': graph_arr, "graph_string_version": str(document.graph)})
+            logger.warning("Confirmation: I'm in my string era. Not anymore o")
+            return JsonResponse({'doc_graph': graph_arr})
+            # return JsonResponse({"graph_string_version": str(document.graph)})
+            # return JsonResponse({'doc_graph': graph_arr, "graph_string_version": str(document.graph)})
 
     
 class SectionViewSet(viewsets.ModelViewSet):
@@ -138,28 +141,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
             logger.warning('Finishing get summary from view')
             serializer = DocumentSerializer(document)
             return JsonResponse(serializer.data)
-
-    # def generate_summary(request, pk):
-    #     """
-    #     :param request: from user
-    #     :param pk: represents each document
-    #     :return: summary text
-    #     """
-    #     logger.warning('Starting get summary from view')
-    #
-    #     try:
-    #         document = Document.objects.get(pk=pk)
-    #     except Document.DoesNotExist:
-    #         return HttpResponse(status=404)
-    #
-    #     if request.method == 'GET':
-    #         # I should probably be checking for previous summaries ?
-    #         document.generate_summarization()
-    #         document.save()
-    #
-    #         logger.warning('Finishing get summary from view')
-    #         serializer = DocumentSerializer(document)
-    #         return JsonResponse(serializer.data)
 
     # get text for new section that's user defined
     @csrf_exempt

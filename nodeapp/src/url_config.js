@@ -11,7 +11,7 @@ let summarizers = ["textrank", "fast", "frequency", "presum","bart", "t5", "gpt3
 // you can only run this once at a time because ui is coupled with server in one docker container
 urlConfig.summarizer_url = urlConfig.base_url + summarizers[6] + '/';
 
-let testingBoolean = true;
+let testingBoolean = false;
 urlConfig.testing = testingBoolean;
 
 let studyLevels = ['all-controls', 'some-controls', 'no-controls'];

@@ -26,7 +26,8 @@ export default class DocumentModel {
    * @returns {string} the rendered text of the actual document
    */
   get text () {
-    let text = '';
+    //let text = '';
+    let text = "<p>";
     // let sentence_urls = this.getUrls()
     // console.log(this.sentences)
     // console.log(this.articles)
@@ -34,7 +35,23 @@ export default class DocumentModel {
     // this is the introduction paragraph with no section
     for (let sentence of this.sentences) {
       if (sentence !== ' ') {
-        text = text + ' ' + sentence.text;
+        if(sentence.text.includes("<br />")){
+          let stringSplits = sentence.text.split("<br />")
+          if(stringSplits.join('') == ""){
+            text = text + "<br />" + "</p>" + "<p>"
+          }else {
+            if (stringSplits[0] != "") {
+              text = text + " " + stringSplits[0] + "</p>" + "<p>"
+            }
+            for (let i = 1; i < stringSplits.length; i++) {
+              if (stringSplits[i] != "") {
+                text = text + "<br />" + "</p>" + "<p>" + stringSplits[i] + "</p>" + "<p>"
+              }
+            }
+          }
+        }else{
+          text = text + ' ' + sentence.text;
+        }
       }
     }
     // remove initial space that gets added to first sentence as a result of concatenation
@@ -42,15 +59,31 @@ export default class DocumentModel {
 
     for (let section of this.sections) {
       // do the heading
-      text = text + `\n\n<b>${section.heading}</b>\n`;
+      text = text + `\n\n<b>${section.heading.replace("\n", "")}</b>\n`;
       // and the sentences for that section
       if (section.sentences.length != 0) {
         for (let sentenceSection of section.sentences) {
-          text = text + ' ' + sentenceSection.text;
+          if(sentenceSection.text.includes("<br />")){
+            let stringSplits = sentenceSection.text.split("<br />")
+            if(stringSplits.join('') == ""){
+              text = text + "<br />" + "</p>" + "<p>"
+            }else {
+              if (stringSplits[0] != "") {
+                text = text + " " + stringSplits[0] + "</p>" + "<p>"
+              }
+              for (let i = 1; i < stringSplits.length; i++) {
+                if (stringSplits[i] != "") {
+                  text = text + "<br />" + "</p>" + "<p>" + stringSplits[i] + "</p>" + "<p>"
+                }
+              }
+            }
+          }else{
+            text = text + ' ' + sentenceSection.text.replace("\n", "");
+          }
         }
       }
     }
-
+    text = text + "</p>"
     return text;
   }
 
@@ -96,9 +129,43 @@ export default class DocumentModel {
   }
 
   removeHtmlTags(editor_text){
+    console.log("editor text in removeHtmlTags")
+    console.log(editor_text)
     let domParser = new DOMParser()
     let doc = domParser.parseFromString(editor_text, 'text/html')
-    return doc.body.textContent
+    //let tags = ['html', 'head', 'body', 'p']
+    let tags = ['head', 'body', 'p']
+
+    tags.forEach(tag => {
+      console.log("element: " + tag)
+      const elements = doc.getElementsByTagName(tag)
+      for (let i = elements.length - 1; i >= 0; i--) {
+        const element = elements[i];
+        element.replaceWith(...element.childNodes);
+      }
+    })
+
+    //return doc.body.textContent
+    //console.log("doc.body.textContent")
+    //console.log(doc.body.textContent)
+    const serializer = new XMLSerializer();
+    return serializer.serializeToString(doc);
+  }
+
+  removeLastChars(str){
+    let endIndex = str.length - 1;
+    let lastChars = str.substring(str.length-4, str.length)
+    console.log("lastChars: " + lastChars)
+    if(lastChars == "&lt;"){
+      return str.slice(0, str.length-4);
+    }
+    else{
+      return str
+    }
+    // while (endIndex >= 0 &&
+    //       ((str.charAt(endIndex) === "<") || (str.charAt(endIndex) === "\n") || (str.charAt(endIndex) === " "))) {
+    //   endIndex--;
+    // }
   }
 
   updateSentences(params, sectionIndex, actualEditorContentsJsonObject, isLastSection){
@@ -123,13 +190,18 @@ export default class DocumentModel {
     if((sectionIndex<0) || ((sectionIndex>=0) && (!isLastSection))){
       // introduction
       // editor_text = jsonValue.substring(3, jsonValue.length-8) //remove <p> from start, </p><p>< from end
-      editor_text = this.removeHtmlTags(jsonValue).replace("<", "") //remove <p> from start, </p><p>< from end
+      editor_text = this.removeHtmlTags(jsonValue)
+      //editor_text = this.removeHtmlTags(jsonValue) //remove <p> from start, </p><p>< from end
+      editor_text = this.removeLastChars(editor_text.replace(/<html[^>]*>|<\/html>/g, ''));
     }else {
       if (isLastSection) {
         // last section
         // editor_text = jsonValue.substring(7, jsonValue.length - 4) //remove </p><p> from start, </p> from end
         editor_text = this.removeHtmlTags(jsonValue)
-       }
+        //editor_text = this.removeHtmlTags(jsonValue)
+        editor_text = this.removeLastChars(editor_text.replace(/<html[^>]*>|<\/html>/g, ''));
+
+      }
         // else {
       //   //normal section
       //   // editor_text = jsonValue.substring(7, jsonValue.length - 8) //remove </p><p> from start, </p><p>< from end
@@ -159,6 +231,7 @@ export default class DocumentModel {
         let index  = old_sentences_text.indexOf(new_sent)
         let new_sentence_json = old_sentences.slice(index, index+1)[0]
         new_sentence_json.position = position
+        new_sentence_json.text = new_sent
         new_sentences.push(new_sentence_json)
       } else {
         new_sentences.push({
@@ -180,8 +253,9 @@ export default class DocumentModel {
 
 
   removeArticleSentences(params, sectionIndex){
-    // remove from the articles the old sentences that have been updated or deleted
+    // remove from the articles the old sentences that have been (updated) or deleted ONLY deleting DELETED sentences
     // so, they can be deleted on the backend too (hopefully)
+    //
 
     // Keep track of the sentences being sent to the backend
     let tempParams = null;

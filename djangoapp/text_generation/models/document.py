@@ -38,22 +38,6 @@ class Document(models.Model):
     def __str__(self):
         return f'{self.id}: {self.title}'
 
-#     def save(self, *args, **kwargs):
-#         instance = self
-#         all_sentences = instance.sentences.filter(section=None)
-#         full_text = ''
-#         for sent in all_sentences:
-#             full_text = full_text + sent.text + ' '
-#         all_sections = instance.sections.all()
-#         for section in all_sections:
-#             full_text = full_text + "\n" + section.heading + "\n"
-#             for sent in section.sentences.all():
-#                 full_text = full_text + sent.text + ' '
-#         if full_text != '':
-#             dh = DocumentHistory.objects.create(text=full_text)
-#             instance.documentHistories.add(dh)
-#         super().save(*args, **kwargs)
-
     def _set_body_sentences(self, body_text: str):
         """This is used mostly for testing, so that we can create a new document and not have to run the summarizers
         :param str body_text: the text that you want in the document
@@ -81,7 +65,8 @@ class Document(models.Model):
         """
         # delete all sentences in current document then generate new summary
         Sentence.objects.filter(document=self, section=None, is_user_defined=False).delete()
-        Keyword.objects.filter(document=self)
+        Keyword.objects.filter(document=self).delete()
+        SuggestedLink.objects.filter(document=self).delete()
 
         # an if statement about to get more urls or not
         if get_articles:
@@ -93,7 +78,8 @@ class Document(models.Model):
             # or pick top 5 articles
             temp_articles = temp_articles1[:5]
             for article in temp_articles:
-                self.articles.create(document=self, text=article.text, url=article.source_url, section=None)
+                self.articles.create(document=self, text=article.text, url=article.url, section=None)
+            self.set_keywords_links(self.title)
         else:
             self._user_defined_articles()
             self.clean_keywords()
@@ -142,9 +128,10 @@ class Document(models.Model):
             # temp_articles = random.sample(temp_articles, 3)
             # or pick top 3 articles
             temp_articles = temp_articles1[:3]
+            logger.warning("Get Articles is true. Articles about to be set listed below.")
             for article in temp_articles:
-                section.articles.create(text=article.text, url=article.source_url)
-        #         new_article = Article(text=article.text, url=article.source_url, section=section)
+                logger.warning(article)
+                section.articles.create(text=article.text, url=article.url)
         else:
             self._user_defined_articles(section=section)
         #     I want to keep keywords for introduction if summarizer is gpt3
@@ -236,12 +223,19 @@ class Document(models.Model):
         if summarizer != "gpt3":
             for keyword in expanded_terms:
                 Keyword.objects.get_or_create(text=keyword, document=self)
+        allArticlesInDocument = Article.objects.filter(document=self)
+
+        for section in self.sections.all():
+            allArticlesInSection = Article.objects.filter(section=section)
+            allArticlesInDocument = allArticlesInDocument.union(allArticlesInSection)
+
+        allArticlesInDocumentList = list(allArticlesInDocument)
 
         for article in articles_s:
             # logger.warn("each article")
             # logger.warn(str(article))
-            allArticlesInDocument = Article.objects.filter(document=self)
-            if not allArticlesInDocument.filter(url=article.url).exists():
+            # if not allArticlesInDocumentList.filter(url=article.url).exists():
+            if len([art for art in allArticlesInDocumentList if art.url == article.url]) <= 0:
                 SuggestedLink.objects.get_or_create(url=article.url, document=self)
 
     def _summarize_articles(self,  articles: List[Article], section: Section = None, summarizer_text='gpt3',) -> None:
@@ -265,7 +259,7 @@ class Document(models.Model):
         elif summarizer_text == 't5':
             summarizer = T5Summarizer(words=125)
         elif summarizer_text == 'gpt3':
-            summarizer = GPT3Summarizer(words=150)
+            summarizer = GPT3Summarizer(words=200)
 
         logger.warning('{}:Summarizer set. About to summarize each article'.format(datetime.datetime.now()))
         i = 1
@@ -320,8 +314,9 @@ class Document(models.Model):
         :return: None
         """
         texts = []
+        allSents = self.getAllDocSecSentences()
         if useAllSentences:
-            for sentence in self.sentences.all():
+            for sentence in allSents:
                 process_text_result = process_text(sentence.text)
                 list_of_stemmed_words = []
                 # get list of stemmed words
@@ -353,6 +348,15 @@ class Document(models.Model):
             for token in row.keys():
                 self.tf_idf_scores[token] = row[token]
 
+    def getAllDocSecSentences(self):
+        allSents = []
+        for sent in self.sentences.all():
+            allSents.append(sent)
+        for section in self.sections.all():
+            for sec_sent in section.sentences.all():
+                allSents.append(sec_sent)
+        return allSents
+
     # TODO this is currently only building it for the 'intro' section and not the subsections
     def build_triple_graph(self, useAllSentences=False) -> None:
         """
@@ -365,10 +369,13 @@ class Document(models.Model):
         # logger.warn(self.sentences.all())
         # logger.warn("self.tf_idf_scores")
         # logger.warn(self.tf_idf_scores)
+        # changed self.sentences.all()
+        allSents = self.getAllDocSecSentences()
         if useAllSentences:
-            self.graph = TripleGraph(self.sentences.all(),
-                                 self.tf_idf_scores)  # saw this in test
+            logger.warning("about to use all sentences")
+            self.graph = TripleGraph(allSents, self.tf_idf_scores)  # saw this in test
         else:
+            logger.warning("about to use ONLY some sentences")
             self.graph = TripleGraph(self.sentences.filter(section=None), self.tf_idf_scores)
         #     use only section sentences
         logger.warning('{}: Triple Graph built'.format(datetime.datetime.now()))

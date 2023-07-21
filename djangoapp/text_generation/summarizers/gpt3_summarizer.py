@@ -90,41 +90,9 @@ class GPT3Summarizer:
             # logger.warning("after prompt keyword")
 
             if getMaxTokensNumber(_promptSummary) > 20 and getMaxTokensNumber(_promptKeyword) > 10:
-                _maxTokens = self.words * 4
+                _maxTokens = self.words * 6
                 if section is not None:
                     _maxTokens = self.words * 2
-                # logger.warning(_maxTokens)
-                # logger.warning("after max tokens")
-
-                # logger.warning("About to call OpenAI completion")
-                # text_sum = ai.Completion.create(
-                #     model="text-davinci-003",
-                #     prompt=_prompt,
-                #     temperature=.5,
-                #     max_tokens=_maxTokens,
-                # )
-                # logger.warning(text_sum)
-
-                # logger.warning("_promptSummary")
-                # logger.warning(_promptSummary)
-                # logger.warning(_maxTokensInit, getMaxTokensNumber(_promptSummary), getMaxTokensNumber(_promptKeyword))
-                # _maxTokens = min(_maxTokensInit, getMaxTokensNumber(_promptSummary),
-                # getMaxTokensNumber(_promptKeyword))
-                # logger.warning("amount of tokens chosen")
-                # logger.warning(_maxTokens)
-                # prompts = [_promptSummary, _promptKeyword]
-                # response = ai.Completion.create(
-                #     model="text-davinci-002",
-                #     prompt=prompts,
-                #     temperature=0,
-                #     max_tokens=_maxTokens,
-                #     top_p=1.0,
-                #     frequency_penalty=0.0,
-                #     presence_penalty=1
-                # )
-                #
-                # logger.warning("response")
-                # logger.warning(response)
 
                 test = getMaxTokensNumber(_promptSummary)
                 logger.warning("amount of tokens left - sum")
@@ -135,26 +103,15 @@ class GPT3Summarizer:
                 #
                 logger.warning("About to call OpenAI completion - summary")
                 text_sum = completion_with_backoff(model=model_name, prompt=_promptSummary, temperature=0,
-                                                   max_tokens=_maxTokensSum, top_p=1.0, frequency_penalty=0.0,
+                                                   max_tokens=_maxTokensSum, top_p=1.0, frequency_penalty=0.8,
                                                    presence_penalty=1)
 
-                # text_sum = ai.Completion.create(
-                #     model=model_name,
-                #     prompt=_promptSummary,
-                #     temperature=0,
-                #     max_tokens=_maxTokensSum,
-                #     top_p=1.0,
-                #     frequency_penalty=0.0,
-                #     presence_penalty=1
-                # )
-                # print(text_sum)
                 logger.warning("text_sum")
                 logger.warning(text_sum)
 
                 test2 = getMaxTokensNumber(_promptKeyword)
                 logger.warning("amount of tokens left - keyword")
                 logger.warning(test2)
-
                 _maxTokensKey = min(50, test2)
                 logger.warning("amount of tokens chosen - keyword")
                 logger.warning(_maxTokensKey)
@@ -162,31 +119,11 @@ class GPT3Summarizer:
                 logger.warning("About to call OpenAI completion - keywords")
                 text_keywords = completion_with_backoff(model=model_name, prompt=_promptKeyword, temperature=0,
                                                         max_tokens=_maxTokensKey, top_p=1.0, frequency_penalty=0.8,
-                                                        presence_penalty=0.0)
+                                                        presence_penalty=1)
 
-                # text_keywords = ai.Completion.create(
-                #     model=model_name,
-                #     prompt=_promptKeyword,
-                #     temperature=0,
-                #     max_tokens=_maxTokensKey,
-                #     top_p=1.0,
-                #     frequency_penalty=0.8,
-                #     presence_penalty=0.0
-                # )
-                # print(text_keywords)
                 logger.warning("text_keywords")
                 logger.warning(text_keywords)
 
-                # logger.warning("keyword-palava")
-                # logger.warning(text_keywords["choices"][0]["text"].split(": ")[1].split(", "))
-                # text_sum = response.choices[0]
-                # logger.warning("text_sum")
-                # logger.warning(text_sum)
-                #
-                # text_keywords = response.choices[1]
-                # logger.warning("text_keywords")
-                # logger.warning(text_keywords)
-                # list_of_keywords = []
                 if model_name == "text-davinci-002":
                     text_keywords_words = text_keywords["choices"][0].text.split("\n\n")
                     list_of_keywords = text_keywords_words[len(text_keywords_words) - 1].split(",")
@@ -194,10 +131,13 @@ class GPT3Summarizer:
                     text_keywords_words = text_keywords["choices"][0]["text"].split(":")
                     list_of_keywords = text_keywords_words[len(text_keywords_words) - 1].strip("\n").split(", ")
 
+                allKeywordsInDocument = Keyword.objects.filter(document=document)
+
                 if text_keywords["choices"][0].text.strip() != "":
                     for keyword in list_of_keywords:
                         if (str.lower(keyword.strip()) != str.lower(document.title)) and (len(keyword.split(" ")) <= 3):
-                            Keyword.objects.get_or_create(text=keyword.strip(), document=document)
+                            if not allKeywordsInDocument.filter(text=keyword.strip()).exists():
+                                Keyword.objects.get_or_create(text=keyword.strip(), document=document)
 
                 # tokenize the sentences to insert into the data model
                 temp_sum_sents = text_sum["choices"][0].text.split("\n\n")
@@ -206,10 +146,16 @@ class GPT3Summarizer:
                 else:
                     final_sum_sents = nltk.tokenize.sent_tokenize(temp_sum_sents[0].strip(": "))
                 # print(final_sum_sents)
-
+                logger.warning("final_sum_sents")
                 logger.warning(final_sum_sents)
 
+                logger.warning(final_sum_sents)
+                actual_final_sum_sents = []
                 for sent in final_sum_sents:
+                    if sent not in actual_final_sum_sents:
+                        actual_final_sum_sents.append(sent)
+
+                for sent in actual_final_sum_sents:
                     if section is not None:
                         new_sent = Sentence(text=sent, position=-1, section=section, article=article)
                     else:

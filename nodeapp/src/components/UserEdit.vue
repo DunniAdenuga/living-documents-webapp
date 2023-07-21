@@ -27,7 +27,7 @@
               <b-col class="mt-3 mr-1" cols="3">
                 <h5><b>Sections</b></h5>
               </b-col>
-              <b-col class="mt-2" cols="4">
+              <b-col v-if="studyLevel==='all-controls'" class="mt-2" cols="4">
                 <b-button v-if="studyLevel==='all-controls'"
                           title="Add New Section"
                           variant="outline-light"
@@ -39,11 +39,11 @@
 
             <!--            For Introduction -->
             <ul id="introduction" class="pl-3"><li>
-              <b-row class="pl-2" align-v="center">
+              <b-row class="pl-2 justify-content-md-center" align-v="center" >
                 <b-col cols="4">
                   <p>Introduction</p>
                 </b-col>
-                <b-col cols="8">
+                <b-col cols="8" class="mt-1">
                   <b-button v-if="studyLevel==='all-controls'"
                             title="Add Link to Introduction" variant="outline-light" size="sm"
                             @click="onAddLinkClicked()">
@@ -63,7 +63,7 @@
                         <b-col>
                           <a v-bind:href="article.url" id="eachArticle" ref="eachArticle">{{ getLittleVersion(article.url) }}</a>
                           <b-button v-if="showArticleSentencesTempObj !== article.id" title="See Link Summary Sentences" variant="outline-light" size="sm"
-                                    @click="turnOnArticleSentences(article)">
+                                    @click="turnOnArticleSentences(article, null)">
                             <b-icon icon="eye" variant="success" scale=0.5></b-icon>
                           </b-button>
                           <b-button v-if="showArticleSentencesTempObj === article.id" title="Hide Link Summary Sentences" variant="outline-light" size="sm"
@@ -83,13 +83,14 @@
             </ul>
 
             <!--            Rest of List of Sections -->
-            <ul class="pl-3" id="sectionsList" v-for="section in this.documentModel.sections" :key="section.heading">
+            <ul class="pl-3" id="sectionsList" v-for="section in this.documentModel.sections" :key="section.heading"
+                v-if="studyLevel==='all-controls'">
               <li>
                 <b-row class="pl-2 pt-1" align-v="center">
                   <b-col cols="4">
                     <p>{{section.heading}}</p>
                   </b-col>
-                  <b-col cols="8">
+                  <b-col cols="8" class="mt-1">
                     <b-button title="Add Link to Section" variant="outline-light" size="sm"
                               @click="onIconAddLinkToSectionClicked(section.heading)">
                       <b-icon icon="link45deg" variant="success" scale=0.6></b-icon>
@@ -112,7 +113,7 @@
                           <b-col>
                             <a v-bind:href="article.url" id="eachSectionArticle" ref="eachArticle">{{ getLittleVersion(article.url) }}</a>
                             <b-button v-if="showArticleSentencesTempObj !== article.id" title="See Link Summary Sentences" variant="outline-light" size="sm"
-                                      @click="turnOnArticleSentences(article)">
+                                      @click="turnOnArticleSentences(article, section)">
                               <b-icon icon="eye" variant="success" scale=0.5></b-icon>
                             </b-button>
                             <b-button v-if="showArticleSentencesTempObj === article.id" title="Hide Link Summary Sentences" variant="outline-light" size="sm"
@@ -158,17 +159,18 @@
         </b-col>
 
         <b-col cols="6" id="and-editor">
-          <!-- Quill Editor -->
+          <!-- Quill Editor ---->
           <vue-editor id="quill_editor"
                       ref="quill_editor"
                       v-model="documentModel.text"
                       :editorToolbar="customToolbar"
+                      :editorOptions="editorSettings"
                       :disabled="studyLevel === 'no-controls'"
           />
         </b-col>
         <b-col cols="2" id="see-tree-save-doc">
           <b-row>
-            <b-button class="mt-3"
+            <b-button class="mt-5"
                       variant="success"
                       @click="seeTree">
               See Graph
@@ -177,6 +179,7 @@
           <b-row>
             <b-button v-if="studyLevel != 'no-controls'"
                       class="mt-3"
+                      style="position: fixed; width: 15%; "
                       variant="success"
                       @click="onSaveClicked()">
               Save
@@ -188,6 +191,7 @@
               variant="success"
               @dismissed="dismissCountDown=0"
               @dismiss-count-down="countDownChanged"
+              style="position: fixed; top: 300px;"
           >
             Document Saved!
           </b-alert>
@@ -318,13 +322,26 @@ export default {
       studyLevel: urlConfig.studyLevel,
 
       //add generate
+      //customToolbar: [[]],
       customToolbar: [
-        ['italic', 'underline'],
-        [{'list': 'ordered'}, {'list': 'bullet'}],
-        ['image', 'code-block'],
+        ['italic'],
+        //['underline', 'strike'],
+        [{ 'header': 1 }, { 'header': 2 }],
+       [{'list': 'ordered'}, {'list': 'bullet'}],
+        ['link', 'image'], [{'color': []}],
+          ['clean']
+        //['image', 'code-block'],
         // ['save'],
         // ['addLink'], ['showLinks'], ['generateSummary'],
       ],
+      editorSettings: {
+        theme: 'snow',
+        // modules: {
+        //   clipboard: {
+        //     matchVisual: false,
+        //   }
+        // }
+      }
     };
   },
 
@@ -368,7 +385,11 @@ export default {
         // console.log(current_editor_contents_d)
         console.log(current_editor_contentsHTML)
         //would only work for introduction
-        this.documentModel.save(current_editor_contents, current_editor_contentsHTML)
+        this.documentModel.save(current_editor_contents, current_editor_contentsHTML, ()=> {
+          this.documentModel.load(this.id)
+        }, ()=>{
+          alert("Save Failed. Try Again!")
+        })
         // window.setInterval(this.onSaveClicked, 600000)
         this.dismissCountDown = this.dismissSecs
       }
@@ -571,7 +592,7 @@ export default {
           that.clearLink();
         }, () => {
           that.loading_spinner.show = false;
-          alert("Section summary failed. Try Again!")
+          alert("Section summary failed. Try Again with unlocked articles with enough information!")
           that.clearLink();
         })
       }, () => {
@@ -582,16 +603,14 @@ export default {
 
    // https://codepen.io/percipient24/pen/eEBOjG
   //
+  //   breakWholeDocument: function(wholeDocument){
+  //   },
+
     findDiff: function(actualArticle, tempWholeDoc){
-        //this.$refs.quill_editor.quill
-        //this.$refs.quill_editor.quill.editor.delta
-        // var oldContent = quill_old.getContents();
-        // var newContent = quill_new.getContents();
 
         let Delta = Quill.import('delta');
 
         let articleSentences = new Delta();
-        // let documentSentences = new Delta();
         let allSentences = null;
         let blockDocument = this.documentModel;
 
@@ -601,7 +620,7 @@ export default {
           allSentences = new Delta();
           let y;
           for(y = 0; y < blockDocument.sentences.length; y++){
-            allSentences.insert(blockDocument.sentences[y].text);
+            allSentences.insert(blockDocument.sentences[y].text + " ");
           }
         }else {
           allSentences = new Delta(tempWholeDoc);
@@ -622,10 +641,10 @@ export default {
           // if the change was an insertion
           if (op.hasOwnProperty('insert')) {
             // color it green
-            op.attributes = {
+            /*op.attributes = {
               background: "#cce8cc",
               color: "#003700"
-            };
+            };*/
           }
           //if no change
           if (op.hasOwnProperty('retain')) {
@@ -658,8 +677,133 @@ export default {
         // quill_diff.setContents(adjusted);
     },
 
-  //
-    turnOnArticleSentences: function(actualArticle){
+    getSectionSentences: function(wholeDocDelta, actualSectionArticle, sectionInfo){
+      let Delta = Quill.import('delta');
+      let oneArray = []
+      let sectionArraySentences = []
+      let lastArray = []
+      let tempArray = []
+      //let reachedSection = false
+      for (let i = 0; i < wholeDocDelta.ops.length; i++) {
+        let op = wholeDocDelta.ops[i];
+        // if the change was an insertion
+        if (op.hasOwnProperty('insert')) {
+          if (op.insert == sectionInfo.heading){
+            if (op.hasOwnProperty('attributes')){
+              if(op.attributes.hasOwnProperty('bold')){
+                if(op.attributes.bold == true){
+                  oneArray.push(op)
+                  tempArray = wholeDocDelta.ops.slice(i+1, wholeDocDelta.ops.length)
+                  console.log("tempArray")
+                  console.log(tempArray)
+                  break
+                }else{
+                  oneArray.push(op)
+                }
+              }else{
+                oneArray.push(op)
+              }
+            }else{
+              oneArray.push(op)
+            }
+          }else{
+            oneArray.push(op)
+          }
+        }else{
+          oneArray.push(op)
+        }
+      }
+      console.log("oneArray")
+      console.log(oneArray)
+      // let reachedNextSection = false
+      for (let j = 0; j < tempArray.length; j++) {
+        let singleTemp = tempArray[j];
+        if (singleTemp.hasOwnProperty('insert')) {
+            if (singleTemp.hasOwnProperty('attributes')){
+              if(singleTemp.attributes.hasOwnProperty('bold')){
+                if(singleTemp.attributes.bold == true){
+                  lastArray = tempArray.slice(j, tempArray.length)
+                  break
+                }else{
+                  sectionArraySentences.push(singleTemp)
+                }
+              }else{
+                sectionArraySentences.push(singleTemp)
+              }
+            }else{
+              sectionArraySentences.push(singleTemp)
+            }
+          }else{
+          sectionArraySentences.push(singleTemp)
+          }
+        }
+      console.log("all sectionArraySentences")
+      console.log(sectionArraySentences)
+
+      console.log("lastArray")
+      console.log(lastArray)
+
+      // let allSectionSentencesEditor = new Delta({ops: sectionArraySentences})
+      let allSectionSentencesEditor = new Delta(sectionArraySentences)
+      let sectionArticleSentences = new Delta()
+      let k;
+      for(k = 0; k < actualSectionArticle.sentences.length; k++){
+        sectionArticleSentences.insert(actualSectionArticle.sentences[k].text);
+      }
+
+      let diff = allSectionSentencesEditor.diff(sectionArticleSentences);
+      console.log('articleSection', sectionArticleSentences);
+      console.log('allSection', allSectionSentencesEditor);
+      console.log('diffSection', diff);
+      for (let x = 0; x < diff.ops.length; x++) {
+        let op = diff.ops[x];
+        // if the change was an insertion
+        if (op.hasOwnProperty('insert')) {
+          // color it green
+          /*op.attributes = {
+            background: "#cce8cc",
+            color: "#003700"
+          };*/
+        }
+        //if no change
+        if (op.hasOwnProperty('retain')) {
+          // color it pink
+          op.attributes = {
+            background: "#FFC0CB",
+            color: "#370000"
+          };
+        }
+        // if the change was a deletion
+        if (op.hasOwnProperty('delete')) {
+          // keep the text
+          op.retain = op.delete;
+          delete op.delete;
+          // but color it red and struckthrough
+          // op.attributes = {
+          //   background: "#e8cccc",
+          //   color: "#370000",
+          //   strike: true
+          // };
+        }
+      }
+      console.log('diff', diff);
+      let oneArrayDelta = new Delta(oneArray);
+      let sectionSentencesAdjusted = allSectionSentencesEditor.compose(diff)
+      let lastArrayDelta = new Delta(lastArray);
+
+      let adjusted1 = oneArrayDelta.concat(sectionSentencesAdjusted)
+      let fullyAdjusted = adjusted1.concat(lastArrayDelta)
+      // let adjusted = allSentences.compose(diff);
+      // // console.log('adjusted', adjusted);
+      //
+      return fullyAdjusted
+      // // profit!
+      // quill_diff.setContents(adjusted);
+
+    },
+
+    //
+    turnOnArticleSentences: function(actualArticle, section=null){
       if(this.showArticleSentencesTempObj !== null){
         this.turnOffArticleSentences();
       }
@@ -673,8 +817,12 @@ export default {
       }
       console.log("this.tempWholeDocument in turnOn")
       console.log(this.tempWholeDocument)
-      this.$refs.quill_editor.quill.setContents(this.findDiff(actualArticle, this.tempWholeDocument));
-
+      if(section == null) {
+        this.$refs.quill_editor.quill.setContents(this.findDiff(actualArticle, this.tempWholeDocument));
+      }else{
+        this.$refs.quill_editor.quill.setContents
+                                      (this.getSectionSentences(this.tempWholeDocument, actualArticle, section))
+      }
       this.showArticleSentencesTempObj = actualArticle.id;
     },
 
@@ -686,7 +834,7 @@ export default {
         // this assumes tempWholeDocument is null, since no user edits updates the editor
         let y;
         for(y = 0; y < this.documentModel.sentences.length; y++){
-          documentSentences.insert(this.documentModel.sentences[y].text);
+          documentSentences.insert(this.documentModel.sentences[y].text + " ");
         }
       }
       this.$refs.quill_editor.quill.setContents(this.studyLevel === 'no-controls'
@@ -708,18 +856,18 @@ export default {
 };
 </script>
 
-<style lang="scss">
-@import "../../node_modules/@voerro/vue-tagsinput/dist/style.css";
-</style>
+<!--<style lang="scss">-->
+<!--@import "../../node_modules/@voerro/vue-tagsinput/dist/style.css";-->
+<!--</style>-->
 
 <style>
 #quill_editor .ql-editor {
   min-height: 500px;
 }
 
-#quill_editorNo {
-  min-height: 500px;
-}
+/*#quill_editorNo {*/
+/*  min-height: 500px;*/
+/*}*/
 
 p {
   margin: 0;
@@ -727,42 +875,42 @@ p {
 
 ul { margin: 0; }
 
-a:hover {
-  color: blue;
-  border-style: dotted;
-}
+/*a:hover {*/
+/*  color: blue;*/
+/*  border-style: dotted;*/
+/*}*/
 
-.ql-save:after {
-  content: "Save";
+/*.ql-save:after {*/
+/*  content: "Save";*/
 
-}
+/*}*/
 
-.ql-addLink:after {
-  content: "+Link";
-}
+/*.ql-addLink:after {*/
+/*  content: "+Link";*/
+/*}*/
 
-.ql-showLinks:after {
-  content: "SL";
-}
+/*.ql-showLinks:after {*/
+/*  content: "SL";*/
+/*}*/
 
-.ql-generateSummary:after {
-  content: "GS";
-}
+/*.ql-generateSummary:after {*/
+/*  content: "GS";*/
+/*}*/
 
 
-.line-dotted:hover {
-  border-style: dotted;
-}
+/*.line-dotted:hover {*/
+/*  border-style: dotted;*/
+/*}*/
 
-.line-dotted2:hover {
-  border-style: dotted;
-}
+/*.line-dotted2:hover {*/
+/*  border-style: dotted;*/
+/*}*/
 
-.line-solid {
-  border-style: solid;
-}
+/*.line-solid {*/
+/*  border-style: solid;*/
+/*}*/
 
-.line-double {
-  border-style: double;
-}
+/*.line-double {*/
+/*  border-style: double;*/
+/*}*/
 </style>
